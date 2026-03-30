@@ -1,3 +1,5 @@
+from cmath import exp
+
 import numpy as np
 
 class CircuitSimulator:
@@ -82,7 +84,24 @@ class CircuitSimulator:
         """ YOUR CODE HERE:
         jac = ...
         """
+        V2 = x[1]
+        V3 = x[2]
+
+        Is = 1e-13 #Saturation Current
+        Vt = 0.025 #Thermal Voltage
+        #to get the jacobian matrix, we need to get dId/dV2 and dId/dV3
+
+        dID_V2 = Is * np.exp((V2 - V3) / Vt) * (1 / Vt)
+        dID_V3 = -Is * np.exp((V2 - V3) / Vt) * (1 / Vt)
+
+        jac = np.array([
+            [0,0,0,0],
+            [0,dID_V2,dID_V3,0],
+            [0,-dID_V2,-dID_V3,0],
+            [0,0,0,0]
+        ])
         return jac
+
     def BEuler(self, x_0, delta_t, T, noise = False):
         # Get the G and C matrices
         G = self.G_mat
@@ -114,7 +133,18 @@ class CircuitSimulator:
         """ YOUR CODE HERE:
         x = ...
         """
+        psi = A @ x + self.get_f_vect(x) - b
+        J = A + self.get_jac(x)
+        h = np.linalg.solve(J, psi)
+        x = x - h
+
+        while np.linalg.norm(h) >= epsilon :
+            psi = A @ x + self.get_f_vect(x) - b
+            J = A + self.get_jac(x)
+            h = np.linalg.solve(J, psi)
+            x = x - h
         return x
+
     def getSensitivities(self, x_pred, G_mat, C_mat, R, delta_t):
         # Calculates sensitivity of nodal voltages (x) to parameters R and C
         dxdr = []
@@ -133,6 +163,15 @@ class CircuitSimulator:
             """ YOUR CODE HERE:
             dxdc = ...
             """
+            dCdC = self.get_dCdC()
+            if i == 0:
+                dxdc = []
+                tempc = -(dCdC / delta_t) @ x_pred[i]
+            else:
+                tempc = -(dCdC / delta_t) @ (x_pred[i] - x_pred[i - 1]) + (C_mat / delta_t) @ dxdc[i - 1]
+
+            dxdc.append(np.linalg.solve(A, tempc))
+
         dxdr = np.array(dxdr)
         dxdc = np.array(dxdc)
         return dxdr, dxdc
