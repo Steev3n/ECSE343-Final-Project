@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from circuit_simulator import CircuitSimulator
 import pickle
+import tqdm
 
 def plot_data(x_test, tpoints):
     # Create the figure and the first axis (for Volts)
@@ -60,7 +61,7 @@ def create_dataset(num_samples, amplitude, f, delta_t, T, noise):
     x = [] # To store the simulated transient responses (features)
     y = [] # To store the ground truth R and C values (labels)
 
-    for i in range(num_samples):
+    for i in tqdm.tqdm(range(num_samples)):
         # Randomly sample resistance (1 to 5k Ohms) and capacitance (0.1 to 10 microFarads)
         """ YOUR CODE HERE:
         R, C = ...
