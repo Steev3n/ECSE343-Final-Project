@@ -114,7 +114,7 @@ class CircuitSimulator:
         while( t < T ):
             # Formulate the system: (G + C/dt) * x_new = b + (C/dt) * x_old
             A = G + (1/delta_t)*C
-            b = self.get_b(self.amplitude, self.f, t) + (1/delta_t)*C@x
+            b = self.get_b(self.amplitude, self.f, t + delta_t) + (1/delta_t)*C@x
             # Solve non-linear equation for the current time step
             x = self.NewtonRaphson(A,b,x, 1e-6)
             tpoints.append(t)

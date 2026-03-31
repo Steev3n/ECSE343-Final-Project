@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 from circuit_simulator import CircuitSimulator
@@ -65,30 +66,32 @@ def create_dataset(num_samples, amplitude, f, delta_t, T, noise):
     print("Creating dataset...")
     for i in tqdm(range(num_samples)):
 
-        # Randomly sample resistance (1 to 5k Ohms) and capacitance (0.1 to 10 microFarads)
+        # Randomly sample resistance (1000 to 5k Ohms) and capacitance (0.1 to 10 microFarads)
         if i == 0:
 
             sampler = qmc.LatinHypercube(d=2)
             lhs = sampler.random(n=num_samples)
 
-            create_dataset.lhs_log = qmc.scale(
+            create_dataset.lhs_scaled = qmc.scale(
                 lhs,
-                [np.log10(1.0), np.log10(0.1e-6)],
-                [np.log10(2500.0), np.log10(5e-6)]
+                [1.0, 0.1e-6],
+                [2500.0, 5e-6]
             )
 
-        R = create_dataset.lhs_log[i, 0]
-        C = create_dataset.lhs_log[i, 1]
+        R = create_dataset.lhs_scaled[i, 0]
+        C = create_dataset.lhs_scaled[i, 1]
 
         # Initialize the Modified Nodal Analysis (MNA) simulator with current parameters
-        mna = CircuitSimulator(amplitude, f, 10**R, 10**C)
-        y.append([R, C])
+        mna = CircuitSimulator(amplitude, f, R, C)
+        y.append([math.log(R), math.log(C)])
 
         # Initialize state variables 
         x_init = np.zeros((4,))
 
         # Perform simulation using the Backward Euler method
         transient, _ = mna.BEuler(x_init, delta_t, T, noise = noise)
+        # Scale only the 4th signal (current) by 1000 (convert A to mA)
+        transient[:, 3] *= 1000
         x.append(transient)
 
     # Convert lists to NumPy arrays for easier manipulation in ML frameworks
@@ -109,3 +112,36 @@ def save_dataset(x, y):
     }
     with open(f'data/dataset.pkl', 'wb') as f:
         pickle.dump(data_to_save, f)
+
+def plot_rc_distribution(y):
+    """
+    Plots the frequency distribution of the real R and C values.
+    """
+    # y contains natural log values, use np.exp to recover real values
+    R_real = np.exp(y[:, 0])
+    C_real = np.exp(y[:, 1])
+
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+
+    ax1.hist(R_real, bins=30, color='skyblue', edgecolor='black', alpha=0.7)
+    ax1.set_title('Distribution of Resistance (R)')
+    ax1.set_xlabel('Resistance (Ohms)')
+    ax1.set_ylabel('Frequency')
+    ax1.grid(True, linestyle='--', alpha=0.7)
+
+    # Scale to microFarads for readability
+    ax2.hist(C_real * 1e6, bins=30, color='lightgreen', edgecolor='black', alpha=0.7)
+    ax2.set_title('Distribution of Capacitance (C)')
+    ax2.set_xlabel('Capacitance (\u03bcF)')
+    ax2.set_ylabel('Frequency')
+    ax2.grid(True, linestyle='--', alpha=0.7)
+
+    # Scatter plot of R vs C
+    ax3.scatter(R_real, C_real * 1e6, alpha=0.6, color='coral', edgecolor='black', s=15)
+    ax3.set_title('R vs C Joint Distribution')
+    ax3.set_xlabel('Resistance (Ohms)')
+    ax3.set_ylabel('Capacitance (\u03bcF)')
+    ax3.grid(True, linestyle='--', alpha=0.7)
+
+    plt.tight_layout()
+    plt.show()
