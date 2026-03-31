@@ -129,21 +129,39 @@ class CircuitSimulator:
         return y, tpoints
 
     def NewtonRaphson(self, A, b, x, epsilon):
-        # Iterative solver for non-linear systems
-        """ YOUR CODE HERE:
-        x = ...
-        """
-        psi = A @ x + self.get_f_vect(x) - b
-        J = A + self.get_jac(x)
-        h = np.linalg.solve(J, psi)
-        x = x - h
-
-        while np.linalg.norm(h) >= epsilon :
+        # Iterative solver for non-linear systems (damped NR: full steps can
+        # overshoot the diode exponential and make J nearly singular).
+        max_iter = 200
+        for _ in range(max_iter):
             psi = A @ x + self.get_f_vect(x) - b
+            npsi = np.linalg.norm(psi)
+            if npsi < epsilon:
+                return x
             J = A + self.get_jac(x)
-            h = np.linalg.solve(J, psi)
-            x = x - h
-        return x
+            try:
+                h = np.linalg.solve(J, psi)
+            except np.linalg.LinAlgError:
+                h = np.linalg.lstsq(J, psi, rcond=None)[0]
+            alpha = 1.0
+            while alpha >= 1e-14:
+                x_trial = x - alpha * h
+                if not np.all(np.isfinite(x_trial)):
+                    alpha *= 0.25
+                    continue
+                fv = self.get_f_vect(x_trial)
+                if not np.all(np.isfinite(fv)):
+                    alpha *= 0.25
+                    continue
+                psi_t = A @ x_trial + fv - b
+                if np.linalg.norm(psi_t) < npsi or alpha <= 1e-4:
+                    x = x_trial
+                    break
+                alpha *= 0.5
+            else:
+                raise RuntimeError(
+                    "Newton-Raphson: could not find a damped step; try smaller delta_t"
+                )
+        raise RuntimeError("Newton-Raphson: max iterations exceeded")
 
     def getSensitivities(self, x_pred, G_mat, C_mat, R, delta_t):
         # Calculates sensitivity of nodal voltages (x) to parameters R and C

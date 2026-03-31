@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 from circuit_simulator import CircuitSimulator
 import pickle
 from scipy.stats import qmc
-
-#import tqdm
+from tqdm.auto import tqdm
 
 def plot_data(x_test, tpoints):
     # Create the figure and the first axis (for Volts)
@@ -63,12 +62,10 @@ def create_dataset(num_samples, amplitude, f, delta_t, T, noise):
     x = [] # To store the simulated transient responses (features)
     y = [] # To store the ground truth R and C values (labels)
 
-    for i in range(num_samples): # for i in tqdm.tqdm(range(num_samples)):
+    print("Creating dataset...")
+    for i in tqdm(range(num_samples)):
 
         # Randomly sample resistance (1 to 5k Ohms) and capacitance (0.1 to 10 microFarads)
-        """ YOUR CODE HERE:
-        R, C = ...
-        """
         if i == 0:
 
             sampler = qmc.LatinHypercube(d=2)
@@ -83,8 +80,6 @@ def create_dataset(num_samples, amplitude, f, delta_t, T, noise):
         R = create_dataset.lhs_log[i, 0]
         C = create_dataset.lhs_log[i, 1]
 
-        
-
         # Initialize the Modified Nodal Analysis (MNA) simulator with current parameters
         mna = CircuitSimulator(amplitude, f, 10**R, 10**C)
         y.append([R, C])
@@ -96,14 +91,13 @@ def create_dataset(num_samples, amplitude, f, delta_t, T, noise):
         transient, _ = mna.BEuler(x_init, delta_t, T, noise = noise)
         x.append(transient)
 
-        # Progress tracking
-        if(i % 100 == 0):
-            print(f"Created {i+1} samples")
-
     # Convert lists to NumPy arrays for easier manipulation in ML frameworks
     x = np.array(x)
     y = np.array(y)
+
+    print("Dataset created successfully")
     return x, y
+
 
 def save_dataset(x, y):
     """
@@ -113,6 +107,5 @@ def save_dataset(x, y):
         'data': x,    # The time-series simulation results
         'target': y   # The corresponding R and C values
     }
-    # Save to a specific directory using binary write mode
-    with open('dataset.pkl', 'wb') as f:
+    with open(f'data/dataset.pkl', 'wb') as f:
         pickle.dump(data_to_save, f)
