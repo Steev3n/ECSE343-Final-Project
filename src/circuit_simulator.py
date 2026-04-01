@@ -1,5 +1,3 @@
-from cmath import exp
-
 import numpy as np
 
 class CircuitSimulator:
