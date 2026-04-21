@@ -1,7 +1,7 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-from circuit_simulator import CircuitSimulator
+from group_20_circuit_simulator import CircuitSimulator
 import pickle
 from scipy.stats import qmc
 from tqdm.auto import tqdm

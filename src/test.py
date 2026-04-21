@@ -1,6 +1,6 @@
 import numpy as np
-from circuit_simulator import CircuitSimulator
-from helper_functions import plot_data, create_dataset, save_dataset
+from group_20_circuit_simulator import CircuitSimulator
+from group_20_helper_functions import plot_data, create_dataset, save_dataset
 
 # ==========================================
 # 1. Simulation Parameters & Constants
